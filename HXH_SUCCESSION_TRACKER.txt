@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Whale I - Complete Expedition Tracker</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0c;
+            --bg-panel: #121216;
+            --bg-sidebar: #0e0e11;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #d97706; /* Nen Aura Gold */
+            --border: #27272a;
+            
+            --status-alive: #22c55e;
+            --status-dead: #ef4444;
+            --status-special: #3b82f6;
+            --status-unknown: #a855f7;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 280px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 25px 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar h2 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin: 25px 0 12px 10px;
+            opacity: 0.8;
+        }
+
+        .sidebar h2:first-of-type { margin-top: 0; }
+
+        .faction-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 15px;
+            text-align: left;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+        }
+
+        .faction-btn:hover {
+            background-color: #1c1c24;
+            color: var(--text-main);
+        }
+
+        .faction-btn.active {
+            background-color: var(--accent);
+            color: #000;
+            font-weight: 700;
+        }
+
+        /* Main Content Container */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Group Content Wrap */
+        .faction-content {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .faction-content.active {
+            display: flex;
+        }
+
+        /* Header block inside main content */
+        .header-section {
+            padding: 30px 40px 10px 40px;
+            background: linear-gradient(to bottom, #0f0f13, transparent);
+            flex-shrink: 0;
+        }
+
+        .header-section h1 {
+            margin: 0 0 5px 0;
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        /* HORIZONTAL PANEL VIEW */
+        .panel-container {
+            display: flex;
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 20px 40px 40px 40px;
+            gap: 25px;
+            -webkit-overflow-scrolling: touch; /* Smooth iOS horizontal swipe */
+        }
+
+        /* Custom Scrollbar Styling */
+        .panel-container::-webkit-scrollbar {
+            height: 10px;
+        }
+        .panel-container::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        .panel-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 5px;
+        }
+        .panel-container::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        .vertical-panel {
+            flex: 0 0 440px;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            transition: border-color 0.3s;
+        }
+
+        .vertical-panel:hover {
+            border-color: rgba(217, 119, 6, 0.4);
+        }
+
+        .panel-body {
+            padding: 35px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .panel-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0;
+            color: #ffffff;
+        }
+
+        .badge {
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .b-alive { background: rgba(34, 229, 94, 0.15); color: var(--status-alive); }
+        .b-dead { background: rgba(239, 68, 68, 0.15); color: var(--status-dead); border: 1px solid var(--status-dead); }
+        .b-special { background: rgba(59, 130, 246, 0.15); color: var(--status-special); }
+        .b-unknown { background: rgba(168, 85, 247, 0.15); color: var(--status-unknown); }
+
+        .panel-role {
+            font-size: 1.05rem;
+            color: var(--accent);
+            font-weight: 600;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-notes {
+            font-size: 1.25rem;
+            color: #e2e8f0;
+            line-height: 1.75;
+            margin: 0;
+        }
+
+        .panel-divider {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--border) 20%, var(--border) 80%, transparent);
+            margin: 20px 0;
+            opacity: 0.7;
+        }
+
+        .panel-update {
+            font-size: 1.25rem;
+            line-height: 1.75;
+            color: #f1f5f9;
+        }
+
+        .panel-update strong {
+            color: #ffffff;
+            border-bottom: 1px dashed rgba(217, 119, 6, 0.4);
+        }
+
+        /* RESPONSIVE MOBILE FIXES */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow: auto; /* Allow full vertical scroll on mobile */
+            }
+
+            .sidebar {
+                width: 100%;
+                box-sizing: border-box;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 15px;
+                flex-direction: row;
+                overflow-x: auto; /* Horizontal button scrolling on phone */
+                overflow-y: hidden;
+                white-space: nowrap;
+                gap: 10px;
+            }
+
+            .sidebar h2 {
+                display: none; /* Hide category headers on mobile to save space */
+            }
+
+            .faction-btn {
+                margin-bottom: 0;
+                display: inline-block;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+
+            .main-content {
+                height: auto;
+                overflow: visible;
+            }
+
+            .header-section {
+                padding: 20px 20px 5px 20px;
+            }
+
+            .header-section h1 {
+                font-size: 1.6rem;
+            }
+
+            /* Turn panels into a normal vertical stack on phones so you just scroll down */
+            .panel-container {
+                flex-direction: column;
+                overflow-x: hidden;
+                overflow-y: visible;
+                padding: 10px 20px 30px 20px;
+                gap: 20px;
+            }
+
+            .vertical-panel {
+                flex: none;
+                width: 100%;
+            }
+
+            .panel-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <button class="faction-btn active" onclick="switchFaction('p1-5')">Princes 1 - 5</button>
+        <button class="faction-btn" onclick="switchFaction('p6-9')">Princes 6 - 9</button>
+        <button class="faction-btn" onclick="switchFaction('p10-14')">Princes 10 - 14</button>
+        <button class="faction-btn" onclick="switchFaction('spiders')">Phantom Troupe</button>
+        <button class="faction-btn" onclick="switchFaction('morena')">Heil-Ly Family</button>
+        <button class="faction-btn" onclick="switchFaction('hisoka')">Hisoka Morow</button>
+        <button class="faction-btn" onclick="switchFaction('zodiacs')">Zodiacs</button>
+        <button class="faction-btn" onclick="switchFaction('beyond')">Beyond Squad</button>
+        <button class="faction-btn" onclick="switchFaction('wildcards')">Ging & Pariston</button>
+    </div>
+
+    <!-- Main Board -->
+    <div class="main-content">
+        
+        <!-- ================= PRINCES 1-5 ================= -->
+        <div id="p1-5" class="faction-content active">
+            <div class="header-section">
+                <h1>Princes 1 - 5 (Heavyweights)</h1>
+                <p class="subtitle">Tier 1 VVIP Staging Grounds</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">1. Benjamin</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Unma • Military Commander</p>
+                        <p class="panel-notes">Possesses "Benjamin Baton," inheriting the Nen abilities of his fallen loyal guards.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">He has instituted aggressive special checkpoints across the middle holds and is actively asserting strict military surveillance over all other contestants via his embedded observers.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">2. Camilla</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Duazul</p>
+                        <p class="panel-notes">A counter-type user whose ability "Have-nots" activates a massive cat construct upon her death to crush her executioner and resurrect her.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Currently detained under absolute close guard after launching a direct, unsuccessful physical assault against Benjamin.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">3. Zhang Lei</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Tang Zhao • Xi-Yu Supporter</p>
+                        <p class="panel-notes">His Guardian Spirit Beast manifests unique golden coins.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">He is actively expanding close strategic ties with Kurapika's group, focusing his team on decoding the exact Nen conditions, triggers, and long-term values of these generated tokens.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">4. Tserriednich</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Unma • Specialist Genius</p>
+                        <p class="panel-notes">An absolute combat monster who mastered high-level Nen operations within a single week.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">He has fully streamlined his 10-second precognitive Zetsu combat triggers. Concurrently, his personal guard detail is actively scanning the lower holds to pinpoint and eliminate Morena's hidden base.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">5. Tubeppa</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Duazul</p>
+                        <p class="panel-notes">Analytically driven and focused on chemical formulations.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Actively pursuing a formal defensive partnership with Kurapika, seeking to secure immediate analytical buffers to withstand the high-lethality martial output of the top two brothers.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PRINCES 6-9 ================= -->
+        <div id="p6-9" class="faction-content">
+            <div class="header-section">
+                <h1>Princes 6 - 9 (Middle Tier)</h1>
+                <p class="subtitle">Tiers 1 - 2 Operations</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">6. Tyson</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Katrono • Guard: Izunavi</p>
+                        <p class="panel-notes">Her Spirit Beast distributes small constructs that harvest aura while granting targets an intense sense of systemic joy.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Izunavi successfully monitors her immediate safety perimeter while keeping her insulated from the direct bloodshed on the deck.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">7. Luzurus</h3><span class="badge b-alive">Alive</span></div>
+                        <p class="panel-role">Queen Duazul • Cha-R Backed</p>
+                        <p class="panel-notes">His Nen Beast sets localized traps based on the physical and materialistic desires of targets.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Taking standard protective stances and relying extensively on the heavy military presence of the Cha-R mafia family to lock down stability on his tier.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">8. Sale-sale</h3><span class="badge b-dead">Deceased</span></div>
+                        <p class="panel-role">Queen Swinko-swinko</p>
+                        <p class="panel-notes">**ELIMINATED.** His smoke-based aura beast was systematically disassembled by Benjamin’s tactical counter-agent, Rihan, setting him up for a silent, lethal strike early in the war.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">His clean removal stands as the definitive first tactical milestone of the inheritance conflict.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">9. Halkenburg</h3><span class="badge b-dead">Body Dead / Transferred</span></div>
+                        <p class="panel-role">Queen Duazul • Soul Transfer</p>
+                        <p class="panel-notes">Possessed an absolute collective aura arrow capable of high-tier structural piercing.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">While his original physical frame has expired under arrest, his consciousness has **successfully hijacked Benjamin’s primary administrative advisor, Balsamilco**. The royal court is preparing a massive public state funeral, creating heavy crowd vulnerabilities.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PRINCES 10-14 ================= -->
+        <div id="p10-14" class="faction-content">
+            <div class="header-section">
+                <h1>Princes 10 - 14 (Lower Tier Hotspot)</h1>
+                <p class="subtitle">Room 1014 Command Zone</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Kurapika & Wable</h3><span class="badge b-special">Active</span></div>
+                        <p class="panel-role">14th Prince / Room 1014 Core</p>
+                        <p class="panel-notes">Directing defensive layouts with Bill and Oito. He has officially broadcasted that infant Wable is entirely ineligible for standard active combat engagement.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Kurapika is currently steering the volatile **Round 2 Nen Classrooms** under the close eye of Babimyna, managing fragile strategic truces with the other royal factions.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">11. Fugetsu</h3><span class="badge b-alive">Cursed</span></div>
+                        <p class="panel-role">Queen Seiko • Spatial Transit</p>
+                        <p class="panel-notes">Capable of forging spatial gate networks across the ship tiers.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Her physical stamina is breaking down aggressively due to being continuously targeted by **hostile long-range magic curses** sent by hidden agents. Melody is working around the clock to isolate and clear the hex triggers.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">10. Kacho</h3><span class="badge b-dead">Ghost Form</span></div>
+                        <p class="panel-role">Queen Seiko • Guardian Beast</p>
+                        <p class="panel-notes">Died trying to break past the ship perimeter via emergency escape hulls.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Her unique Nen Beast "Without You" has perfectly mirrored her appearance, voice, and memories to safely guide, shield, and comfort her twin sister Fugetsu from tracking perimeter units.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">12. Momoze</h3><span class="badge b-dead">Deceased</span></div>
+                        <p class="panel-role">Queen Sevanti</p>
+                        <p class="panel-notes">**ELIMINATED.** Exhausted by her Nen beast's autonomous drain, she was left defenseless and assassinated by a compromised guard early on.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Her sudden death forced the complete restructuring of lower-tier security and guard verification protocols.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">13. Marayam</h3><span class="badge b-alive">Isolated</span></div>
+                        <p class="panel-role">Queen Sevanti • Guard: Hanzo / Biscuit</p>
+                        <p class="panel-notes">Positioned inside a separate translocated reality with his direct defense squad.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">His massive, defensive Guardian Spirit Beast has successfully translocated the entirety of Room 1013 into an isolated pocket dimension. Hanzo and Biscuit remain stationed within the safe zone.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= THE SPIDERS ================= -->
+        <div id="spiders" class="faction-content">
+            <div class="header-section">
+                <h1>The Phantom Troupe (Spiders)</h1>
+                <p class="subtitle">Tiers 3 - 5 Infiltration Cells</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Chrollo Lucilfer</h3><span class="badge b-alive">Hunting</span></div>
+                        <p class="panel-role">The Head of the Spider</p>
+                        <p class="panel-notes">Scouring the lower tiers to track down and eliminate Hisoka.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Currently moving to exploit the chaotic public crowd shifts surrounding Halkenburg's major state funeral processing to bypass military checkpoints and infiltrate higher decks.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Nobunaga Squad</h3><span class="badge b-alive">Combat</span></div>
+                        <p class="panel-role">Phinks, Feitan, Nobunaga</p>
+                        <p class="panel-notes">Frontline vanguard crew managing security tracking.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Operating under a strict cleanup arrangement with the Cha-R mafia family to wipe out the Heil-Ly family. Following an encounter with a hidden spatial warp trap, they are tracking a signal to locate the hidden lair.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Zoldyck Members</h3><span class="badge b-alive">Active</span></div>
+                        <p class="panel-role">Illumi & Kalluto</p>
+                        <p class="panel-notes">Assassination specialist tracking units embedded inside the group.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Positioned on Tier 3 under light surveillance. Illumi openly states he joined the Troupe directly at Hisoka's explicit request to participate in a high-stakes, lethal game of hide-and-seek.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MORENA / HEIL-LY ================= -->
+        <div id="morena" class="faction-content">
+            <div class="header-section">
+                <h1>Heil-Ly Family (Morena Prudo)</h1>
+                <p class="subtitle">Hidden Sub-levels & Warp Hubs</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Morena Prudo</h3><span class="badge b-alive">Active</span></div>
+                        <p class="panel-role">Contagion Mastermind</p>
+                        <p class="panel-notes">Her capability "Contagion" functions like an asymmetric RPG leveling system based on raw casualty numbers.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">She has ordered her family to completely abandon their primary staging grounds to evade the joint searches of the Xi-Yu and Cha-R networks, spreading systematic chaos up through Tier 2.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Leveling Cultists</h3><span class="badge b-alive">Slayer Units</span></div>
+                        <p class="panel-role">Dogman & Infiltrators</p>
+                        <p class="panel-notes">Followers seeking to increase their Nen levels through targeted strikes.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Actively executing calculated, random killings across lower decks to drive their power levels upward. They rely on localized spatial warps to drop out of visibility when chased by mafia squads.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= HISOKA ================= -->
+        <div id="hisoka" class="faction-content">
+            <div class="header-section">
+                <h1>Hisoka Morow</h1>
+                <p class="subtitle">Underworld Wildcard</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Hisoka Morow</h3><span class="badge b-special">Active</span></div>
+                        <p class="panel-role">The Target / Solo Agent</p>
+                        <p class="panel-notes">Using a clean appearance modification to blend perfectly into upper-tier crowds.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">**He is operating directly on Tier 1.** He is systematically avoiding the lower decks to force the Spiders to break their formations, waiting for the structural breakdown of the funeral gathering to initiate contact.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Underworld Status</h3><span class="badge b-unknown">Protected</span></div>
+                        <p class="panel-role">Xi-Yu Protection Agreement</p>
+                        <p class="panel-notes">Logistical buffering handled by specialized underworld syndicates.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">The Xi-Yu mafia leadership is intentionally keeping his precise location shielded from the Spiders, hoping to use his lethal combat output to counterbalance the military might of the other families.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= ZODIANCS ================= -->
+        <div id="zodiacs" class="faction-content">
+            <div class="header-section">
+                <h1>Hunter Association (The Zodiacs)</h1>
+                <p class="subtitle">Mid-tier Operation Centers</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Mizaistom (Ox)</h3><span class="badge b-alive">Active</span></div>
+                        <p class="panel-role">Security & Intel Director</p>
+                        <p class="panel-notes">Collaborating with Botobai to handle emergency public containment on Tier 3 and 4.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Pushed to his absolute operational limit trying to suppress escalating mafia turf wars and the unexplained mass casualties driven by Morena's cult, cut off from the VVIP royal quarters.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Cheadle & Leorio</h3><span class="badge b-alive">Medical</span></div>
+                        <p class="panel-role">Dog & Boar Divisions</p>
+                        <p class="panel-notes">Managing central triage zones and organizing civilian relief efforts.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Processing thousands of regular passengers in heavily overwhelmed medical clinics on the lower holds, working to maintain basic structural order while remaining insulated from the upper war.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= BEYOND SQUAD ================= -->
+        <div id="beyond" class="faction-content">
+            <div class="header-section">
+                <h1>Beyond Netero Squad</h1>
+                <p class="subtitle">Tier 1 Detention Core & Embedded Agents</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Beyond Netero</h3><span class="badge b-special">Detained</span></div>
+                        <p class="panel-role">The Vanguard Leader</p>
+                        <p class="panel-notes">Voluntarily resting in total military isolation under close Zodiac watch.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Remaining entirely relaxed and unbothered, confident that the escalating structural chaos of the voyage will inevitably force the Association to release him for frontline control when they hit the boundary.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Longhi</h3><span class="badge b-alive">Active Agent</span></div>
+                        <p class="panel-role">5th Prince Guard / Beyond's Offspring</p>
+                        <p class="panel-notes">A profound hidden wildcard operating deep inside the royal military guard forces.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Has approached Kurapika with a massive alliance proposal, **officially revealing that Beyond has secretly embedded over ten of his biological children throughout the Kakin ranks** carrying internal triggers to alter the succession war.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= WILDCARDS ================= -->
+        <div id="wildcards" class="faction-content">
+            <div class="header-section">
+                <h1>Ging & Pariston Division</h1>
+                <p class="subtitle">Undisclosed Staging Hubs</p>
+            </div>
+            <div class="panel-container">
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Ging Freecss</h3><span class="badge b-alive">Active</span></div>
+                        <p class="panel-role">Archaeological Lead</p>
+                        <p class="panel-notes">Bypassing the immediate political skirmishes to study ancient geological records.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Deeply focused on analyzing records of historical Dark Continent runs, preparing his team purely for the harsh environmental survival realities waiting past the boundary line.</p>
+                    </div>
+                </div>
+                <div class="vertical-panel">
+                    <div class="panel-body">
+                        <div class="panel-header"><h3 class="panel-title">Pariston Hill</h3><span class="badge b-alive">Active</span></div>
+                        <p class="panel-role">Shadow Player</p>
+                        <p class="panel-notes">Master manipulator keeping a low profile across the lower ship decks.</p>
+                        <hr class="panel-divider">
+                        <p class="panel-update">Maintaining total operational radio silence. He holds a massive secret stockpile of thousands of active Chimera Ant cocoons in storage, completely prepared to deploy them to cause institutional havoc.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript to Handle Switching Tabs -->
+    <script>
+        function switchFaction(factionId) {
+            const contents = document.querySelectorAll('.faction-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            const buttons = document.querySelectorAll('.faction-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            const targetContent = document.getElementById(factionId);
+            if(targetContent) {
+                targetContent.classList.add('active');
+            }
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
